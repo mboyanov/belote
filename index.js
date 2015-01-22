@@ -1,11 +1,15 @@
-var app = require('express')();
+var express=require('express');
+var app = express();
+app.use(express.static(__dirname));
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var game = require('./game.js');
+
 var firstgame=new game.Game('yo');
-app.get('/', function(req, res){
-  res.sendfile('index.html');
-});
+
+
+
+
 
 var cards=['7','8','9','10','J','Q','K','A'];
 var suits=['C','D','H','S'];
@@ -19,7 +23,7 @@ var players={};
 io.on('connection', function(socket){
   players[socket.id]=true;
   console.log(socket.id+ ' user connected');
-  
+  io.emit('games updated', games);
   
   socket.on('disconnect', function(){
   delete players[socket.id];
@@ -27,14 +31,24 @@ io.on('connection', function(socket){
   });
   
   socket.on('chat message', function(msg){
-    console.log(players);
+    
     io.emit('chat message', msg);
     
   });
   
   socket.on('create game', function(name){
-    if (name in games) socket.broadcast.to(socket.id).emit('game exists');
-    io.emit('game created', name);
+    console.log("Creating game " + name);
+    if (name in games) {
+      console.log("game exists");
+      io.to(socket.id).emit('game exists');
+    }
+    else {
+      games[name]=new game.Game(name);
+      io.emit('games updated', games);
+      socket.join(name);
+      io.to(name).emit("chat message",'you have joined '+name);
+    }
+   
     
   });
   
